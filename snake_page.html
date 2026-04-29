@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Classic Snake</title>
+  <style>
+    :root {
+      --bg: #f7f2e7;
+      --panel: #fffaf2;
+      --text: #1c1b1a;
+      --muted: #6e665d;
+      --accent: #c45b2e;
+      --accent-2: #19535f;
+      --line: #e2d6c3;
+      --cell: #f1e6d5;
+      --snake: #19535f;
+      --snake-head: #103841;
+      --food: #c45b2e;
+      --ghost: #7e8d55;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Space Grotesk", "Noto Sans SC", "PingFang SC", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, #f2d7ba 0, transparent 38%),
+        radial-gradient(circle at 85% 20%, #c6ded6 0, transparent 35%),
+        var(--bg);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .wrapper {
+      width: min(1080px, 92%);
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    .topbar h1 {
+      font-size: clamp(2rem, 4vw, 3rem);
+    }
+
+    .back-link {
+      text-decoration: none;
+      color: #fff;
+      background: linear-gradient(100deg, var(--accent), #de7f53);
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(27, 31, 35, 0.08);
+    }
+
+    .board-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 560px;
+    }
+
+    .board {
+      width: min(78vw, 560px);
+      aspect-ratio: 1;
+      display: grid;
+      gap: 2px;
+      background: var(--line);
+      padding: 2px;
+      border-radius: 14px;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .cell {
+      background: var(--cell);
+      border-radius: 4px;
+    }
+
+    .cell.snake {
+      background: var(--snake);
+    }
+
+    .cell.head {
+      background: var(--snake-head);
+    }
+
+    .cell.ghost {
+      background: var(--ghost);
+    }
+
+    .cell.food {
+      background: var(--food);
+    }
+
+    .meta {
+      display: grid;
+      gap: 12px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .stat {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fffdf8;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.5rem;
+      color: var(--accent-2);
+    }
+
+    .controls,
+    .dpad,
+    .settings-row,
+    .cheat-row {
+      display: grid;
+      gap: 10px;
+    }
+
+    .controls,
+    .settings-row,
+    .cheat-row {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    button,
+    select,
+    input {
+      border: 1px solid #ccbda8;
+      background: #fff;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 11px 14px;
+      font: inherit;
+    }
+
+    button {
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: linear-gradient(100deg, var(--accent), #de7f53);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .dpad {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .dpad .empty {
+      visibility: hidden;
+    }
+
+    .toggle-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #fffdf8;
+    }
+
+    .toggle input {
+      width: 18px;
+      height: 18px;
+      padding: 0;
+    }
+
+    .label {
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .hint,
+    .cheat-list {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .cheat-list {
+      display: grid;
+      gap: 4px;
+    }
+
+    .status {
+      min-height: 24px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    @media (max-width: 920px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .board-wrap {
+        min-height: auto;
+      }
+
+      .board {
+        width: min(92vw, 520px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrapper">
+    <div class="topbar">
+      <div>
+        <h1>Classic Snake</h1>
+        <p class="hint">方向键或 WASD 控制，空格或 P 暂停，Enter 在结束后重开，手机上支持滑动。</p>
+      </div>
+      <a class="back-link" href="/">返回主页</a>
+    </div>
+
+    <section class="layout">
+      <div class="panel board-wrap">
+        <div class="board" id="board" aria-label="Snake game board"></div>
+      </div>
+
+      <aside class="panel meta">
+        <div class="stats">
+          <div class="stat">
+            当前分数
+            <strong id="score">0</strong>
+          </div>
+          <div class="stat">
+            最高分
+            <strong id="bestScore">0</strong>
+          </div>
+        </div>
+
+        <div class="stat">
+          游戏状态
+          <strong id="stateText">待开始</strong>
+        </div>
+
+        <div class="controls">
+          <button class="primary" id="restartBtn">重新开始</button>
+          <button id="pauseBtn">暂停</button>
+        </div>
+
+        <div>
+          <span class="label">基础设置</span>
+          <div class="settings-row">
+            <select id="difficultySelect">
+              <option value="easy">简单</option>
+              <option value="normal" selected>普通</option>
+              <option value="hard">困难</option>
+            </select>
+            <select id="gridSelect">
+              <option value="12">12 x 12</option>
+              <option value="16" selected>16 x 16</option>
+              <option value="20">20 x 20</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toggle-list">
+          <label class="toggle">
+            <input type="checkbox" id="wrapToggle" />
+            <span>穿墙模式</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="speedRampToggle" checked />
+            <span>分数越高速度越快</span>
+          </label>
+        </div>
+
+        <div class="dpad">
+          <span class="empty">.</span>
+          <button data-dir="up">上</button>
+          <span class="empty">.</span>
+          <button data-dir="left">左</button>
+          <button data-dir="down">下</button>
+          <button data-dir="right">右</button>
+        </div>
+
+        <div>
+          <span class="label">作弊代码</span>
+          <div class="cheat-row">
+            <input id="cheatInput" type="text" maxlength="16" placeholder="输入代码" />
+            <button id="cheatBtn">应用</button>
+          </div>
+          <div class="cheat-list">
+            <span>`GROW` 增长 3 格</span>
+            <span>`FEAST` 食物刷到蛇头前方</span>
+            <span>`IDDQD` 开关幽灵模式</span>
+            <span>`BOOST` 本局提速</span>
+          </div>
+        </div>
+
+        <p class="status" id="statusText"></p>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const BEST_SCORE_KEY = "classic-snake-best-score";
+    const DIFFICULTY_SPEED = {
+      easy: 180,
+      normal: 140,
+      hard: 105
+    };
+    const DIRECTIONS = {
+      up: { x: 0, y: -1 },
+      down: { x: 0, y: 1 },
+      left: { x: -1, y: 0 },
+      right: { x: 1, y: 0 }
+    };
+    const KEY_TO_DIRECTION = {
+      ArrowUp: "up",
+      ArrowDown: "down",
+      ArrowLeft: "left",
+      ArrowRight: "right",
+      w: "up",
+      W: "up",
+      s: "down",
+      S: "down",
+      a: "left",
+      A: "left",
+      d: "right",
+      D: "right"
+    };
+    const OPPOSITE = {
+      up: "down",
+      down: "up",
+      left: "right",
+      right: "left"
+    };
+
+    const boardEl = document.getElementById("board");
+    const scoreEl = document.getElementById("score");
+    const bestScoreEl = document.getElementById("bestScore");
+    const stateTextEl = document.getElementById("stateText");
+    const statusTextEl = document.getElementById("statusText");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const difficultySelect = document.getElementById("difficultySelect");
+    const gridSelect = document.getElementById("gridSelect");
+    const wrapToggle = document.getElementById("wrapToggle");
+    const speedRampToggle = document.getElementById("speedRampToggle");
+    const cheatInput = document.getElementById("cheatInput");
+    const cheatBtn = document.getElementById("cheatBtn");
+
+    const settings = {
+      difficulty: difficultySelect.value,
+      boardSize: Number(gridSelect.value),
+      wrapWalls: wrapToggle.checked,
+      speedRamp: speedRampToggle.checked
+    };
+
+    let cells = [];
+    let tickHandle = null;
+    let directionQueue = [];
+    let bestScore = Number(window.localStorage.getItem(BEST_SCORE_KEY) || 0);
+    let state = createInitialState(settings);
+    let touchStart = null;
+
+    function createInitialState(currentSettings) {
+      const middle = Math.floor(currentSettings.boardSize / 2);
+      const snake = [
+        { x: middle, y: middle },
+        { x: middle - 1, y: middle },
+        { x: middle - 2, y: middle }
+      ];
+      return {
+        snake,
+        direction: "right",
+        food: randomFood(snake, currentSettings.boardSize),
+        score: 0,
+        started: false,
+        paused: false,
+        gameOver: false,
+        boostTicks: 0,
+        cheatGhost: false
+      };
+    }
+
+    function rebuildBoard() {
+      cells = [];
+      boardEl.innerHTML = "";
+      boardEl.style.gridTemplateColumns = `repeat(${settings.boardSize}, 1fr)`;
+      boardEl.style.gridTemplateRows = `repeat(${settings.boardSize}, 1fr)`;
+      for (let index = 0; index < settings.boardSize * settings.boardSize; index += 1) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        boardEl.appendChild(cell);
+        cells.push(cell);
+      }
+    }
+
+    function randomFood(snake, boardSize) {
+      const occupied = new Set(snake.map((segment) => `${segment.x},${segment.y}`));
+      const freeCells = [];
+      for (let y = 0; y < boardSize; y += 1) {
+        for (let x = 0; x < boardSize; x += 1) {
+          const key = `${x},${y}`;
+          if (!occupied.has(key)) {
+            freeCells.push({ x, y });
+          }
+        }
+      }
+      return freeCells[Math.floor(Math.random() * freeCells.length)];
+    }
+
+    function normalizeDirection(currentDirection, nextDirection) {
+      if (!nextDirection) {
+        return currentDirection;
+      }
+      if (nextDirection === OPPOSITE[currentDirection]) {
+        return currentDirection;
+      }
+      return nextDirection;
+    }
+
+    function getEffectiveTickMs(currentState) {
+      let tickMs = DIFFICULTY_SPEED[settings.difficulty];
+      if (settings.speedRamp) {
+        tickMs = Math.max(55, tickMs - currentState.score * 4);
+      }
+      if (currentState.boostTicks > 0) {
+        tickMs = Math.max(45, tickMs - 28);
+      }
+      return tickMs;
+    }
+
+    function updateTimer() {
+      if (tickHandle) {
+        window.clearInterval(tickHandle);
+      }
+      tickHandle = window.setInterval(tick, getEffectiveTickMs(state));
+    }
+
+    function saveBestScore(nextScore) {
+      if (nextScore > bestScore) {
+        bestScore = nextScore;
+        window.localStorage.setItem(BEST_SCORE_KEY, String(bestScore));
+      }
+    }
+
+    function spawnFoodAhead(head, direction, snake) {
+      const delta = DIRECTIONS[direction];
+      const candidate = {
+        x: Math.max(0, Math.min(settings.boardSize - 1, head.x + delta.x)),
+        y: Math.max(0, Math.min(settings.boardSize - 1, head.y + delta.y))
+      };
+      const occupied = snake.some((segment) => segment.x === candidate.x && segment.y === candidate.y);
+      return occupied ? randomFood(snake, settings.boardSize) : candidate;
+    }
+
+    function cloneSegment(segment) {
+      return { x: segment.x, y: segment.y };
+    }
+
+    function extendSnake(snake, count) {
+      const nextSnake = snake.map(cloneSegment);
+      const tail = nextSnake[nextSnake.length - 1];
+      for (let index = 0; index < count; index += 1) {
+        nextSnake.push(cloneSegment(tail));
+      }
+      return nextSnake;
+    }
+
+    function applyMovement(currentState) {
+      const queued = directionQueue.shift();
+      const nextDirection = normalizeDirection(currentState.direction, queued);
+      const delta = DIRECTIONS[nextDirection];
+      const head = currentState.snake[0];
+      let nextHead = { x: head.x + delta.x, y: head.y + delta.y };
+
+      if (settings.wrapWalls) {
+        nextHead = {
+          x: (nextHead.x + settings.boardSize) % settings.boardSize,
+          y: (nextHead.y + settings.boardSize) % settings.boardSize
+        };
+      }
+
+      const outsideBoard =
+        nextHead.x < 0 ||
+        nextHead.x >= settings.boardSize ||
+        nextHead.y < 0 ||
+        nextHead.y >= settings.boardSize;
+
+      if (outsideBoard && !currentState.cheatGhost) {
+        return { ...currentState, direction: nextDirection, gameOver: true };
+      }
+
+      if (outsideBoard && currentState.cheatGhost) {
+        nextHead = {
+          x: Math.max(0, Math.min(settings.boardSize - 1, nextHead.x)),
+          y: Math.max(0, Math.min(settings.boardSize - 1, nextHead.y))
+        };
+      }
+
+      const grows = nextHead.x === currentState.food.x && nextHead.y === currentState.food.y;
+      const body = grows ? currentState.snake : currentState.snake.slice(0, -1);
+      const hitsSelf = body.some((segment) => segment.x === nextHead.x && segment.y === nextHead.y);
+
+      if (hitsSelf && !currentState.cheatGhost) {
+        return { ...currentState, direction: nextDirection, gameOver: true };
+      }
+
+      const nextSnake = [nextHead, ...currentState.snake.map(cloneSegment)];
+      if (!grows) {
+        nextSnake.pop();
+      }
+
+      const nextScore = grows ? currentState.score + 1 : currentState.score;
+      const nextState = {
+        ...currentState,
+        snake: nextSnake,
+        direction: nextDirection,
+        score: nextScore,
+        boostTicks: Math.max(0, currentState.boostTicks - 1),
+        food: grows ? randomFood(nextSnake, settings.boardSize) : currentState.food
+      };
+      saveBestScore(nextScore);
+      return nextState;
+    }
+
+    function startIfReady() {
+      if (!state.started && !state.gameOver) {
+        state = { ...state, started: true, paused: false };
+      }
+    }
+
+    function queueDirection(nextDirection) {
+      if (state.gameOver) {
+        return;
+      }
+      startIfReady();
+      if (state.paused) {
+        state = { ...state, paused: false };
+      }
+      const baseline = directionQueue.length > 0 ? directionQueue[directionQueue.length - 1] : state.direction;
+      if (nextDirection === OPPOSITE[baseline] || nextDirection === baseline) {
+        return;
+      }
+      if (directionQueue.length < 2) {
+        directionQueue.push(nextDirection);
+      }
+      render();
+    }
+
+    function tick() {
+      if (!state.started || state.paused || state.gameOver) {
+        render();
+        return;
+      }
+      state = applyMovement(state);
+      updateTimer();
+      render();
+    }
+
+    function restartGame() {
+      directionQueue = [];
+      state = createInitialState(settings);
+      updateTimer();
+      render();
+    }
+
+    function togglePause() {
+      if (!state.started || state.gameOver) {
+        return;
+      }
+      state = { ...state, paused: !state.paused };
+      render();
+    }
+
+    function applySettingsAndRestart() {
+      settings.difficulty = difficultySelect.value;
+      settings.boardSize = Number(gridSelect.value);
+      settings.wrapWalls = wrapToggle.checked;
+      settings.speedRamp = speedRampToggle.checked;
+      rebuildBoard();
+      restartGame();
+    }
+
+    function applyCheatCode() {
+      const code = cheatInput.value.trim().toUpperCase();
+      if (!code) {
+        return;
+      }
+
+      if (code === "GROW") {
+        const nextSnake = extendSnake(state.snake, 3);
+        const nextScore = state.score + 3;
+        state = { ...state, snake: nextSnake, score: nextScore };
+        saveBestScore(nextScore);
+        statusTextEl.textContent = "作弊成功：长度 +3。";
+      } else if (code === "FEAST") {
+        state = {
+          ...state,
+          food: spawnFoodAhead(state.snake[0], state.direction, state.snake)
+        };
+        statusTextEl.textContent = "作弊成功：食物已送到前方。";
+      } else if (code === "IDDQD") {
+        state = { ...state, cheatGhost: !state.cheatGhost };
+        statusTextEl.textContent = state.cheatGhost ? "幽灵模式已开启。" : "幽灵模式已关闭。";
+      } else if (code === "BOOST") {
+        state = { ...state, boostTicks: 40 };
+        updateTimer();
+        statusTextEl.textContent = "作弊成功：短时间提速。";
+      } else {
+        statusTextEl.textContent = "未知作弊代码。";
+      }
+
+      cheatInput.value = "";
+      render();
+    }
+
+    function render() {
+      cells.forEach((cell) => {
+        cell.className = "cell";
+      });
+
+      state.snake.forEach((segment, index) => {
+        const cellIndex = segment.y * settings.boardSize + segment.x;
+        if (!cells[cellIndex]) {
+          return;
+        }
+        cells[cellIndex].classList.add("snake");
+        if (state.cheatGhost) {
+          cells[cellIndex].classList.add("ghost");
+        }
+        if (index === 0) {
+          cells[cellIndex].classList.add("head");
+        }
+      });
+
+      const foodIndex = state.food.y * settings.boardSize + state.food.x;
+      if (cells[foodIndex]) {
+        cells[foodIndex].classList.add("food");
+      }
+
+      scoreEl.textContent = String(state.score);
+      bestScoreEl.textContent = String(bestScore);
+
+      if (state.gameOver) {
+        stateTextEl.textContent = "已结束";
+        statusTextEl.textContent = "游戏结束，按 Enter 或点击“重新开始”再来一局。";
+      } else if (!state.started) {
+        stateTextEl.textContent = "待开始";
+        if (!statusTextEl.textContent.includes("作弊成功")) {
+          statusTextEl.textContent = "按方向键、WASD 或滑动即可开始。";
+        }
+      } else if (state.paused) {
+        stateTextEl.textContent = "暂停中";
+        statusTextEl.textContent = "已暂停，按空格、P 或点击按钮继续。";
+      } else if (state.cheatGhost) {
+        stateTextEl.textContent = "幽灵中";
+        statusTextEl.textContent = "幽灵模式已开启，作弊码 IDDQD 可关闭。";
+      } else {
+        stateTextEl.textContent = "进行中";
+        if (!statusTextEl.textContent.includes("作弊成功")) {
+          statusTextEl.textContent = "";
+        }
+      }
+
+      pauseBtn.textContent = state.paused ? "继续" : "暂停";
+    }
+
+    document.addEventListener("keydown", (event) => {
+      const direction = KEY_TO_DIRECTION[event.key];
+      if (direction) {
+        event.preventDefault();
+        queueDirection(direction);
+        return;
+      }
+
+      if (event.code === "Space" || event.key === "p" || event.key === "P") {
+        event.preventDefault();
+        togglePause();
+        return;
+      }
+
+      if (event.key === "Enter" && state.gameOver) {
+        event.preventDefault();
+        restartGame();
+      }
+    });
+
+    document.querySelectorAll("[data-dir]").forEach((button) => {
+      button.addEventListener("click", () => queueDirection(button.dataset.dir));
+    });
+
+    boardEl.addEventListener("pointerdown", (event) => {
+      touchStart = { x: event.clientX, y: event.clientY };
+    });
+
+    boardEl.addEventListener("pointerup", (event) => {
+      if (!touchStart) {
+        return;
+      }
+      const deltaX = event.clientX - touchStart.x;
+      const deltaY = event.clientY - touchStart.y;
+      touchStart = null;
+      if (Math.abs(deltaX) < 20 && Math.abs(deltaY) < 20) {
+        return;
+      }
+      if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        queueDirection(deltaX > 0 ? "right" : "left");
+      } else {
+        queueDirection(deltaY > 0 ? "down" : "up");
+      }
+    });
+
+    pauseBtn.addEventListener("click", togglePause);
+    restartBtn.addEventListener("click", restartGame);
+    difficultySelect.addEventListener("change", applySettingsAndRestart);
+    gridSelect.addEventListener("change", applySettingsAndRestart);
+    wrapToggle.addEventListener("change", applySettingsAndRestart);
+    speedRampToggle.addEventListener("change", applySettingsAndRestart);
+    cheatBtn.addEventListener("click", applyCheatCode);
+    cheatInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyCheatCode();
+      }
+    });
+
+    rebuildBoard();
+    updateTimer();
+    render();
+  </script>
+</body>
+</html>
